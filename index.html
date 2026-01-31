@@ -6,450 +6,446 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
     />
-    <title>Sentence Scramble Race - Hybrid Optimized</title>
+    <title>Sentence Scramble Race - Pro Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
-      href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Share+Tech+Mono&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap"
       rel="stylesheet"
     />
     <style>
-      body {
-        font-family: "Share Tech Mono", monospace;
-        background-color: #0a0a0a;
-        color: #00ff41;
-        height: 100vh;
-        width: 100vw;
-        overflow: hidden;
-        user-select: none;
-        /* Penting: Mencegah gestur browser seperti swipe-back atau scroll */
-        touch-action: none;
-        overscroll-behavior: none;
+      :root {
+        --primary: #00ff41;
+        --bg: #050505;
+        --card-bg: #111;
       }
 
-      .matrix-bg {
+      body {
+        font-family: "Share Tech Mono", monospace;
+        background-color: var(--bg);
+        color: var(--primary);
+        height: 100vh;
+        width: 100vw;
+        margin: 0;
+        overflow: hidden;
+        touch-action: none;
+        user-select: none;
+      }
+
+      .matrix-grid {
         position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background:
-          linear-gradient(rgba(0, 255, 65, 0.05) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(0, 255, 65, 0.05) 1px, transparent 1px);
-        background-size: 30px 30px;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(0, 255, 65, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(0, 255, 65, 0.03) 1px, transparent 1px);
+        background-size: 40px 40px;
         z-index: -1;
       }
 
-      .word-chip {
-        cursor: grab;
-        background: #1a1a1a;
-        border: 2px solid #00ff41;
-        box-shadow: 0 0 10px rgba(0, 255, 65, 0.2);
-        transition:
-          box-shadow 0.2s,
-          background 0.2s;
-        /* Mencegah konflik sentuhan pada elemen individu */
-        touch-action: none;
-        z-index: 10;
-      }
-      .word-chip:active {
-        cursor: grabbing;
-      }
-      .word-chip.dragging {
-        opacity: 0.9;
-        box-shadow: 0 0 25px #00ff41;
-        background: #004d1a;
-        border-color: #fff;
-        transform: scale(1.1);
+      /* Container Slot agar kata tidak tumpang tindih */
+      .slot-area {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px;
+        min-height: 120px;
+        padding: 15px;
+        background: rgba(0, 0, 0, 0.3);
+        border: 2px solid rgba(0, 255, 65, 0.1);
+        border-radius: 12px;
       }
 
-      .slot {
-        min-width: 110px;
-        height: 60px;
-        border-bottom: 3px solid #333;
-        margin: 5px;
+      .word-slot {
+        min-width: 100px;
+        height: 50px;
+        border-bottom: 2px solid #333;
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: all 0.2s ease;
+        transition: all 0.2s;
       }
-      /* Highlight area target saat kata berada di atasnya */
-      .slot.active-target {
-        border-bottom-color: #00ff41;
-        background: rgba(0, 255, 65, 0.15);
+
+      .word-slot.active {
+        border-bottom-color: var(--primary);
+        background: rgba(0, 255, 65, 0.05);
+      }
+
+      /* Styling Kata */
+      .word-chip {
+        background: #1a1a1a;
+        border: 2px solid var(--primary);
+        color: white;
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-weight: bold;
+        cursor: grab;
+        box-shadow: 0 4px 0 #004d1a;
+        touch-action: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        white-space: nowrap;
+      }
+
+      .word-chip.dragging {
+        position: fixed !important;
+        z-index: 9999;
+        pointer-events: none;
+        opacity: 0.9;
+        transform: scale(1.1);
+        box-shadow: 0 10px 20px rgba(0, 255, 65, 0.3);
+      }
+
+      /* Tombol Check Modern */
+      .btn-check {
+        background: var(--primary);
+        color: black;
+        font-weight: 800;
+        padding: 10px 25px;
+        border-radius: 4px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        transition: all 0.2s;
+        cursor: pointer;
+      }
+
+      .btn-check:disabled {
+        background: #1a331a;
+        color: #004d1a;
+        cursor: not-allowed;
+      }
+
+      .btn-check:not(:disabled):hover {
+        filter: brightness(1.2);
         transform: translateY(-2px);
       }
 
-      .team-container {
-        border: 1px solid rgba(0, 255, 65, 0.2);
-        background: rgba(0, 0, 0, 0.6);
-        backdrop-filter: blur(8px);
+      .error-shake {
+        animation: shake 0.4s ease-in-out;
       }
 
-      .divider {
-        width: 2px;
-        background: linear-gradient(
-          to bottom,
-          transparent,
-          #00ff41,
-          transparent
-        );
-        box-shadow: 0 0 15px #00ff41;
-      }
-
-      .win-animation {
-        animation: success-pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-      }
-
-      @keyframes success-pop {
-        0% {
-          transform: scale(0.5);
-          opacity: 0;
-        }
+      @keyframes shake {
+        0%,
         100% {
-          transform: scale(1);
-          opacity: 1;
+          transform: translateX(0);
+        }
+        25% {
+          transform: translateX(-8px);
+        }
+        75% {
+          transform: translateX(8px);
+        }
+      }
+
+      /* Responsive adjustments for Tablet/IFP */
+      @media (max-width: 768px) {
+        .slot-area {
+          min-height: 180px;
+        }
+        .word-chip {
+          font-size: 14px;
+          padding: 6px 12px;
         }
       }
     </style>
   </head>
   <body>
-    <div class="matrix-bg"></div>
+    <div class="matrix-grid"></div>
 
-    <!-- UI Stats -->
-    <div
-      class="fixed top-0 w-full flex justify-between px-6 py-4 z-50 pointer-events-none"
+    <!-- Header & Stats -->
+    <header
+      class="fixed top-0 w-full p-4 flex justify-between items-center z-50"
     >
-      <div class="flex flex-col">
-        <span class="text-[10px] uppercase opacity-60 tracking-[0.3em]"
-          >Alpha Connection</span
-        >
-        <span class="text-2xl font-bold text-white" id="scoreA">PROG: 0%</span>
+      <div class="text-left">
+        <div class="text-[10px] opacity-50">NODE_ALPHA</div>
+        <div id="scoreA" class="text-2xl font-bold">WINS: 0</div>
       </div>
 
-      <div class="text-center pointer-events-auto">
-        <h1 class="text-2xl font-bold tracking-[0.5em] text-green-400">
+      <div class="text-center">
+        <h1 class="text-xl md:text-3xl font-black tracking-[0.3em] text-white">
           SENTENCE BREAKER
         </h1>
-        <div id="timer" class="text-xl text-yellow-500 font-mono">00:00</div>
+        <div id="timer" class="text-yellow-500 font-mono text-xl">00:00</div>
         <button
           id="startBtn"
-          onclick="startGame()"
-          class="mt-2 px-6 py-1 bg-green-900/30 border border-green-500 text-green-400 hover:bg-green-500 hover:text-black transition uppercase text-xs font-bold rounded-full"
+          onclick="initGame()"
+          class="mt-2 bg-transparent border border-primary text-primary px-6 py-1 rounded-full text-xs font-bold hover:bg-primary hover:text-black transition"
         >
-          INTIALIZE_SYNC
+          INITIALIZE_GAME
         </button>
       </div>
 
-      <div class="flex flex-col items-end">
-        <span class="text-[10px] uppercase opacity-60 tracking-[0.3em]"
-          >Beta Connection</span
-        >
-        <span class="text-2xl font-bold text-white" id="scoreB">PROG: 0%</span>
+      <div class="text-right">
+        <div class="text-[10px] opacity-50">NODE_BETA</div>
+        <div id="scoreB" class="text-2xl font-bold">WINS: 0</div>
       </div>
-    </div>
+    </header>
 
     <!-- Arena Game -->
-    <div class="flex h-full pt-28 pb-6 px-4 gap-4">
-      <!-- Node A -->
-      <div
-        class="flex-1 flex flex-col team-container rounded-2xl overflow-hidden"
+    <main class="flex h-full pt-32 pb-8 px-4 gap-4">
+      <!-- Player A Side -->
+      <section
+        class="flex-1 flex flex-col bg-black/40 border border-white/5 rounded-3xl p-4 overflow-hidden"
       >
-        <div
-          class="bg-green-950/30 p-2 text-center border-b border-green-900/50"
-        >
-          <span
-            class="text-[10px] font-bold tracking-widest text-green-500 uppercase"
-            >Secure Node: Alpha</span
+        <div class="flex justify-between items-center mb-4 px-2">
+          <span class="text-xs font-bold text-primary">TEAM_ALPHA</span>
+          <button
+            id="checkA"
+            onclick="validate('A')"
+            class="btn-check text-xs"
+            disabled
           >
+            Check
+          </button>
         </div>
-        <div class="flex-1 flex flex-col p-4 overflow-hidden">
-          <div
-            id="slotsA"
-            class="flex flex-wrap justify-center items-center gap-1 mb-6 min-h-[140px] content-center"
-          ></div>
-          <div
-            id="bankA"
-            class="flex flex-wrap justify-center gap-3 mt-auto p-4 bg-black/40 rounded-xl border border-green-900/30 min-h-[120px]"
-          ></div>
+
+        <div class="flex-1 flex flex-col gap-6 overflow-y-auto">
+          <div id="targetA" class="slot-area"></div>
+          <div class="text-[10px] text-center opacity-30">
+            --- WORD BANK ---
+          </div>
+          <div id="sourceA" class="slot-area border-dashed"></div>
         </div>
-      </div>
+      </section>
 
-      <div class="divider hidden md:block"></div>
-
-      <!-- Node B -->
-      <div
-        class="flex-1 flex flex-col team-container rounded-2xl overflow-hidden"
+      <!-- Player B Side -->
+      <section
+        class="flex-1 flex flex-col bg-black/40 border border-white/5 rounded-3xl p-4 overflow-hidden"
       >
-        <div
-          class="bg-green-950/30 p-2 text-center border-b border-green-900/50"
-        >
-          <span
-            class="text-[10px] font-bold tracking-widest text-green-500 uppercase"
-            >Secure Node: Beta</span
+        <div class="flex justify-between items-center mb-4 px-2">
+          <span class="text-xs font-bold text-primary">TEAM_BETA</span>
+          <button
+            id="checkB"
+            onclick="validate('B')"
+            class="btn-check text-xs"
+            disabled
           >
+            Check
+          </button>
         </div>
-        <div class="flex-1 flex flex-col p-4 overflow-hidden">
-          <div
-            id="slotsB"
-            class="flex flex-wrap justify-center items-center gap-1 mb-6 min-h-[140px] content-center"
-          ></div>
-          <div
-            id="bankB"
-            class="flex flex-wrap justify-center gap-3 mt-auto p-4 bg-black/40 rounded-xl border border-green-900/30 min-h-[120px]"
-          ></div>
-        </div>
-      </div>
-    </div>
 
-    <!-- Overlay Kemenangan -->
+        <div class="flex-1 flex flex-col gap-6 overflow-y-auto">
+          <div id="targetB" class="slot-area"></div>
+          <div class="text-[10px] text-center opacity-30">
+            --- WORD BANK ---
+          </div>
+          <div id="sourceB" class="slot-area border-dashed"></div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Win Modal -->
     <div
-      id="winModal"
-      class="fixed inset-0 bg-black/98 hidden items-center justify-center z-[2000] backdrop-blur-md"
+      id="modal"
+      class="fixed inset-0 bg-black/95 hidden items-center justify-center z-[10000]"
     >
       <div
-        class="text-center border border-green-500 p-10 rounded-2xl bg-black shadow-[0_0_50px_rgba(0,255,65,0.2)]"
+        class="text-center p-10 border-2 border-primary rounded-xl bg-black shadow-[0_0_50px_rgba(0,255,65,0.2)]"
       >
-        <h2 class="text-5xl font-bold mb-2 text-white tracking-tighter">
-          DATA SYNCED
-        </h2>
+        <h2 id="modalTitle" class="text-5xl font-black mb-4">NODE SYNCED</h2>
         <p
-          id="winnerName"
-          class="text-xl text-green-400 mb-10 tracking-[0.4em] uppercase"
+          id="modalWinner"
+          class="text-xl mb-10 text-white tracking-widest"
         ></p>
-        <button
-          onclick="location.reload()"
-          class="bg-green-500 text-black px-10 py-3 rounded-lg font-black hover:bg-white transition-all active:scale-95"
-        >
-          SYSTEM REBOOT
+        <button onclick="location.reload()" class="btn-check px-12 py-4">
+          REBOOT SYSTEM
         </button>
       </div>
     </div>
 
     <script>
-      const sentencePool = [
-        "SHE GOES TO SCHOOL EVERY DAY",
+      const sentences = [
+        "I GO TO SCHOOL EVERY DAY",
         "THEY ARE PLAYING FOOTBALL NOW",
-        "I BOUGHT A NEW BOOK YESTERDAY",
-        "WE WILL VISIT BALI NEXT MONTH",
-        "MY MOTHER COOKS DELICIOUS FOOD",
-        "THE CAT IS SLEEPING ON THE SOFA",
-        "THE SUN RISES IN THE EAST",
-        "HE IS A VERY SMART STUDENT",
+        "MY FATHER IS A DOCTOR",
+        "SHE COOKS RICE IN THE KITCHEN",
+        "WE WATCH MOVIE ON SUNDAY",
+        "THE CAT IS SLEEPING UNDER TABLE",
       ];
 
-      let winsA = 0;
-      let winsB = 0;
-      let gameActive = false;
-      let time = 0;
-      let currentSentences = { A: [], B: [] };
+      let state = {
+        A: { wins: 0, current: [], original: "" },
+        B: { wins: 0, current: [], original: "" },
+        gameActive: false,
+        time: 0,
+      };
 
-      function shuffle(array) {
-        return array.sort(() => Math.random() - 0.5);
-      }
-
-      function loadLevel(team) {
-        const sentence =
-          sentencePool[Math.floor(Math.random() * sentencePool.length)];
-        const words = sentence.split(" ");
-        currentSentences[team] = words;
-        const shuffledWords = shuffle([...words]);
-
-        const bank = document.getElementById(`bank${team}`);
-        const slots = document.getElementById(`slots${team}`);
-
-        bank.innerHTML = "";
-        slots.innerHTML = "";
-
-        words.forEach((_, i) => {
-          const slot = document.createElement("div");
-          slot.className = "slot";
-          slot.dataset.index = i;
-          slot.dataset.team = team;
-          slots.appendChild(slot);
-        });
-
-        shuffledWords.forEach((word, idx) => {
-          const chip = document.createElement("div");
-          chip.className = "word-chip px-4 py-2 rounded-lg text-lg font-bold";
-          chip.innerText = word;
-          chip.dataset.team = team;
-          chip.id = `chip-${team}-${idx}-${Date.now()}`;
-
-          // MENGGUNAKAN POINTER EVENTS UNTUK HYBRID SUPPORT
-          chip.addEventListener("pointerdown", onPointerDown);
-
-          bank.appendChild(chip);
-        });
-
-        updateProgress(team);
-      }
-
-      let activeCard = null;
-      let offset = { x: 0, y: 0 };
+      // Pointer State
+      let dragItem = null;
+      let startX, startY;
       let originalParent = null;
 
-      function onPointerDown(e) {
-        if (!gameActive) return;
-
-        activeCard = e.currentTarget;
-
-        // Lock pointer ke elemen (Penting untuk Touch IFP)
-        activeCard.setPointerCapture(e.pointerId);
-
-        const rect = activeCard.getBoundingClientRect();
-        offset.x = e.clientX - rect.left;
-        offset.y = e.clientY - rect.top;
-
-        originalParent = activeCard.parentNode;
-
-        // Set style dragging
-        activeCard.classList.add("dragging");
-        activeCard.style.width = rect.width + "px";
-        activeCard.style.position = "fixed";
-        activeCard.style.left = e.clientX - offset.x + "px";
-        activeCard.style.top = e.clientY - offset.y + "px";
-        activeCard.style.zIndex = "1000";
-        activeCard.style.pointerEvents = "none"; // Izinkan detect element di bawahnya
-
-        activeCard.addEventListener("pointermove", onPointerMove);
-        activeCard.addEventListener("pointerup", onPointerUp);
-        activeCard.addEventListener("pointercancel", onPointerUp);
-      }
-
-      function onPointerMove(e) {
-        if (!activeCard) return;
-
-        activeCard.style.left = e.clientX - offset.x + "px";
-        activeCard.style.top = e.clientY - offset.y + "px";
-
-        // Visual feedback untuk drop target
-        const target = document.elementFromPoint(e.clientX, e.clientY);
-        document
-          .querySelectorAll(".slot")
-          .forEach((s) => s.classList.remove("active-target"));
-
-        const slot = target?.closest(".slot");
-        if (slot && slot.dataset.team === activeCard.dataset.team) {
-          if (!slot.hasChildNodes()) {
-            slot.classList.add("active-target");
-          }
-        }
-      }
-
-      function onPointerUp(e) {
-        if (!activeCard) return;
-
-        activeCard.releasePointerCapture(e.pointerId);
-        const team = activeCard.dataset.team;
-
-        // Cari elemen di bawah kursor
-        const target = document.elementFromPoint(e.clientX, e.clientY);
-        const slot = target?.closest(".slot");
-
-        document
-          .querySelectorAll(".slot")
-          .forEach((s) => s.classList.remove("active-target"));
-
-        let success = false;
-
-        if (slot && slot.dataset.team === team && !slot.hasChildNodes()) {
-          const idx = parseInt(slot.dataset.index);
-          const word = activeCard.innerText;
-          const correctWord = currentSentences[team][idx];
-
-          if (word === correctWord) {
-            // Penempatan Benar
-            const lockedWord = document.createElement("div");
-            lockedWord.className =
-              "text-white text-xl font-bold win-animation uppercase";
-            lockedWord.innerText = word;
-            slot.appendChild(lockedWord);
-            slot.style.borderBottomColor = "#00ff41";
-            activeCard.remove();
-            success = true;
-            checkSentenceComplete(team);
-          }
-        }
-
-        if (!success) {
-          // Kembalikan ke posisi semula
-          activeCard.classList.remove("dragging");
-          activeCard.style.position = "static";
-          activeCard.style.width = "auto";
-          activeCard.style.zIndex = "10";
-          activeCard.style.pointerEvents = "auto";
-          originalParent.appendChild(activeCard);
-        }
-
-        activeCard.removeEventListener("pointermove", onPointerMove);
-        activeCard.removeEventListener("pointerup", onPointerUp);
-        activeCard.removeEventListener("pointercancel", onPointerUp);
-        activeCard = null;
-      }
-
-      function updateProgress(team) {
-        const slots = document.getElementById(`slots${team}`);
-        const filled = slots.querySelectorAll(".text-white").length;
-        const total = currentSentences[team].length;
-        const progress = total > 0 ? Math.round((filled / total) * 100) : 0;
-        document.getElementById(`score${team}`).innerText =
-          `PROG: ${progress}%`;
-      }
-
-      function checkSentenceComplete(team) {
-        updateProgress(team);
-        const slots = document.getElementById(`slots${team}`);
-        const filled = slots.querySelectorAll(".text-white").length;
-
-        if (filled === currentSentences[team].length && filled > 0) {
-          if (team === "A") winsA++;
-          else winsB++;
-
-          // Animasi Berhasil
-          const container = slots.parentElement;
-          container.classList.add("ring-2", "ring-green-400");
-
-          if (winsA >= 3 || winsB >= 3) {
-            setTimeout(
-              () => endGame(team === "A" ? "Node Alpha" : "Node Beta"),
-              500,
-            );
-          } else {
-            setTimeout(() => {
-              container.classList.remove("ring-2", "ring-green-400");
-              loadLevel(team);
-            }, 800);
-          }
-        }
-      }
-
-      function startGame() {
-        gameActive = true;
+      function initGame() {
+        state.gameActive = true;
         document.getElementById("startBtn").classList.add("hidden");
-        loadLevel("A");
-        loadLevel("B");
+        nextLevel("A");
+        nextLevel("B");
 
         setInterval(() => {
-          if (!gameActive) return;
-          time++;
-          const m = Math.floor(time / 60)
+          if (!state.gameActive) return;
+          state.time++;
+          const m = Math.floor(state.time / 60)
             .toString()
             .padStart(2, "0");
-          const s = (time % 60).toString().padStart(2, "0");
+          const s = (state.time % 60).toString().padStart(2, "0");
           document.getElementById("timer").innerText = `${m}:${s}`;
         }, 1000);
       }
 
-      function endGame(winner) {
-        gameActive = false;
-        const modal = document.getElementById("winModal");
-        modal.classList.remove("hidden");
-        modal.classList.add("flex");
-        document.getElementById("winnerName").innerText = `${winner} DOMINATED`;
+      function nextLevel(team) {
+        const raw = sentences[Math.floor(Math.random() * sentences.length)];
+        const words = raw.split(" ");
+        state[team].original = raw;
+        state[team].current = words;
+
+        const targetArea = document.getElementById(`target${team}`);
+        const sourceArea = document.getElementById(`source${team}`);
+        const checkBtn = document.getElementById(`check${team}`);
+
+        targetArea.innerHTML = "";
+        sourceArea.innerHTML = "";
+        checkBtn.disabled = true;
+
+        // Buat slot target
+        words.forEach(() => {
+          const slot = document.createElement("div");
+          slot.className = "word-slot";
+          slot.dataset.team = team;
+          targetArea.appendChild(slot);
+        });
+
+        // Buat kata di bank (source)
+        const shuffled = [...words].sort(() => Math.random() - 0.5);
+        shuffled.forEach((w) => {
+          const slot = document.createElement("div");
+          slot.className = "word-slot";
+          slot.dataset.team = team;
+
+          const chip = createChip(w, team);
+          slot.appendChild(chip);
+          sourceArea.appendChild(slot);
+        });
       }
 
-      // Mencegah menu konteks klik kanan (khususnya di IFP agar tidak muncul menu browser)
-      window.oncontextmenu = (e) => e.preventDefault();
+      function createChip(text, team) {
+        const el = document.createElement("div");
+        el.className = "word-chip";
+        el.innerText = text;
+        el.dataset.team = team;
+        el.addEventListener("pointerdown", onPointerDown);
+        return el;
+      }
+
+      function onPointerDown(e) {
+        if (!state.gameActive) return;
+        dragItem = e.currentTarget;
+        originalParent = dragItem.parentElement;
+
+        const rect = dragItem.getBoundingClientRect();
+        startX = e.clientX - rect.left;
+        startY = e.clientY - rect.top;
+
+        dragItem.classList.add("dragging");
+        dragItem.style.width = rect.width + "px";
+        dragItem.style.left = rect.left + "px";
+        dragItem.style.top = rect.top + "px";
+
+        dragItem.setPointerCapture(e.pointerId);
+        dragItem.addEventListener("pointermove", onPointerMove);
+        dragItem.addEventListener("pointerup", onPointerUp);
+      }
+
+      function onPointerMove(e) {
+        if (!dragItem) return;
+        dragItem.style.left = e.clientX - startX + "px";
+        dragItem.style.top = e.clientY - startY + "px";
+
+        // Visual feedback target
+        const target = document.elementFromPoint(e.clientX, e.clientY);
+        const slot = target?.closest(".word-slot");
+
+        document
+          .querySelectorAll(".word-slot")
+          .forEach((s) => s.classList.remove("active"));
+        if (
+          slot &&
+          slot.dataset.team === dragItem.dataset.team &&
+          !slot.hasChildNodes()
+        ) {
+          slot.classList.add("active");
+        }
+      }
+
+      function onPointerUp(e) {
+        if (!dragItem) return;
+
+        const target = document.elementFromPoint(e.clientX, e.clientY);
+        const slot = target?.closest(".word-slot");
+        const team = dragItem.dataset.team;
+
+        if (slot && slot.dataset.team === team && !slot.hasChildNodes()) {
+          slot.appendChild(dragItem);
+        } else {
+          originalParent.appendChild(dragItem);
+        }
+
+        // Cleanup style
+        dragItem.classList.remove("dragging");
+        dragItem.style.position = "static";
+        dragItem.style.width = "auto";
+
+        // Toggle check button
+        const targetArea = document.getElementById(`target${team}`);
+        const chipsInTarget = targetArea.querySelectorAll(".word-chip").length;
+        document.getElementById(`check${team}`).disabled =
+          chipsInTarget < state[team].current.length;
+
+        dragItem.removeEventListener("pointermove", onPointerMove);
+        dragItem.removeEventListener("pointerup", onPointerUp);
+        dragItem = null;
+      }
+
+      function validate(team) {
+        const targetArea = document.getElementById(`target${team}`);
+        const chips = targetArea.querySelectorAll(".word-chip");
+        const userSentence = Array.from(chips)
+          .map((c) => c.innerText)
+          .join(" ");
+
+        if (userSentence === state[team].original) {
+          state[team].wins++;
+          document.getElementById(`score${team}`).innerText =
+            `WINS: ${state[team].wins}`;
+
+          if (state[team].wins >= 3) {
+            showWin(team === "A" ? "TEAM ALPHA" : "TEAM BETA");
+          } else {
+            targetArea.style.borderColor = "#00ff41";
+            setTimeout(() => {
+              targetArea.style.borderColor = "";
+              nextLevel(team);
+            }, 800);
+          }
+        } else {
+          targetArea.classList.add("error-shake");
+          targetArea.style.borderColor = "#ff4141";
+          setTimeout(() => {
+            targetArea.classList.remove("error-shake");
+            targetArea.style.borderColor = "";
+          }, 500);
+        }
+      }
+
+      function showWin(winner) {
+        state.gameActive = false;
+        const modal = document.getElementById("modal");
+        const winnerText = document.getElementById("modalWinner");
+        modal.classList.remove("hidden");
+        modal.classList.add("flex");
+        winnerText.innerText = `${winner} HAS SECURED THE DATABASE`;
+      }
+
+      // Disable right click for IFP/Touch stability
+      window.addEventListener("contextmenu", (e) => e.preventDefault());
     </script>
   </body>
 </html>
