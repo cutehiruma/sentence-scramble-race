@@ -2,8 +2,11 @@
 <html lang="id">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sentence Scramble Race - Code Breaker</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>Sentence Scramble Race - Hybrid Optimized</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Share+Tech+Mono&display=swap"
@@ -15,8 +18,12 @@
         background-color: #0a0a0a;
         color: #00ff41;
         height: 100vh;
+        width: 100vw;
         overflow: hidden;
         user-select: none;
+        /* Penting: Mencegah gestur browser seperti swipe-back atau scroll */
+        touch-action: none;
+        overscroll-behavior: none;
       }
 
       .matrix-bg {
@@ -37,165 +44,183 @@
         background: #1a1a1a;
         border: 2px solid #00ff41;
         box-shadow: 0 0 10px rgba(0, 255, 65, 0.2);
-        transition: all 0.2s;
+        transition:
+          box-shadow 0.2s,
+          background 0.2s;
+        /* Mencegah konflik sentuhan pada elemen individu */
         touch-action: none;
+        z-index: 10;
       }
       .word-chip:active {
         cursor: grabbing;
+      }
+      .word-chip.dragging {
+        opacity: 0.9;
+        box-shadow: 0 0 25px #00ff41;
+        background: #004d1a;
+        border-color: #fff;
         transform: scale(1.1);
-        box-shadow: 0 0 20px #00ff41;
       }
 
       .slot {
-        min-width: 80px;
-        height: 50px;
+        min-width: 110px;
+        height: 60px;
         border-bottom: 3px solid #333;
-        margin: 0 5px;
+        margin: 5px;
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: border-color 0.3s;
+        transition: all 0.2s ease;
       }
-      .slot.active {
-        border-color: #00ff41;
+      /* Highlight area target saat kata berada di atasnya */
+      .slot.active-target {
+        border-bottom-color: #00ff41;
+        background: rgba(0, 255, 65, 0.15);
+        transform: translateY(-2px);
       }
 
       .team-container {
         border: 1px solid rgba(0, 255, 65, 0.2);
         background: rgba(0, 0, 0, 0.6);
-        backdrop-filter: blur(5px);
+        backdrop-filter: blur(8px);
       }
 
       .divider {
         width: 2px;
-        background: #00ff41;
+        background: linear-gradient(
+          to bottom,
+          transparent,
+          #00ff41,
+          transparent
+        );
         box-shadow: 0 0 15px #00ff41;
       }
 
-      @keyframes scan {
+      .win-animation {
+        animation: success-pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      }
+
+      @keyframes success-pop {
         0% {
-          top: -10%;
+          transform: scale(0.5);
+          opacity: 0;
         }
         100% {
-          top: 110%;
+          transform: scale(1);
+          opacity: 1;
         }
-      }
-      .scanner {
-        position: absolute;
-        width: 100%;
-        height: 2px;
-        background: rgba(0, 255, 65, 0.5);
-        box-shadow: 0 0 15px #00ff41;
-        animation: scan 4s linear infinite;
       }
     </style>
   </head>
   <body>
     <div class="matrix-bg"></div>
-    <div class="scanner"></div>
 
-    <!-- Header Stats -->
-    <div class="fixed top-0 w-full flex justify-between px-10 py-6 z-50">
+    <!-- UI Stats -->
+    <div
+      class="fixed top-0 w-full flex justify-between px-6 py-4 z-50 pointer-events-none"
+    >
       <div class="flex flex-col">
-        <span class="text-xs uppercase opacity-70">Node Alpha</span>
-        <span class="text-3xl font-bold" id="scoreA">PROGRESS: 0%</span>
+        <span class="text-[10px] uppercase opacity-60 tracking-[0.3em]"
+          >Alpha Connection</span
+        >
+        <span class="text-2xl font-bold text-white" id="scoreA">PROG: 0%</span>
       </div>
 
-      <div class="text-center">
-        <h1 class="text-4xl font-bold tracking-widest text-white mb-2">
+      <div class="text-center pointer-events-auto">
+        <h1 class="text-2xl font-bold tracking-[0.5em] text-green-400">
           SENTENCE BREAKER
         </h1>
-        <div id="timer" class="text-2xl text-yellow-400">00:00</div>
+        <div id="timer" class="text-xl text-yellow-500 font-mono">00:00</div>
         <button
           id="startBtn"
           onclick="startGame()"
-          class="mt-2 px-6 py-1 border border-white text-white hover:bg-white hover:text-black transition uppercase text-sm"
+          class="mt-2 px-6 py-1 bg-green-900/30 border border-green-500 text-green-400 hover:bg-green-500 hover:text-black transition uppercase text-xs font-bold rounded-full"
         >
-          Initialize System
+          INTIALIZE_SYNC
         </button>
       </div>
 
       <div class="flex flex-col items-end">
-        <span class="text-xs uppercase opacity-70">Node Beta</span>
-        <span class="text-3xl font-bold" id="scoreB">PROGRESS: 0%</span>
+        <span class="text-[10px] uppercase opacity-60 tracking-[0.3em]"
+          >Beta Connection</span
+        >
+        <span class="text-2xl font-bold text-white" id="scoreB">PROG: 0%</span>
       </div>
     </div>
 
-    <!-- Game Arena -->
-    <div class="flex h-full pt-32 pb-10">
-      <!-- Team A -->
-      <div class="flex-1 flex flex-col items-center px-10 space-y-12">
-        <div class="w-full team-container rounded-lg p-6 flex-1 flex flex-col">
-          <div class="text-center mb-8">
-            <span class="bg-green-900 text-green-300 px-3 py-1 text-xs rounded"
-              >SYSTEM MISSION: DECODE THE SENTENCE</span
-            >
-          </div>
-
-          <!-- Target Slots -->
+    <!-- Arena Game -->
+    <div class="flex h-full pt-28 pb-6 px-4 gap-4">
+      <!-- Node A -->
+      <div
+        class="flex-1 flex flex-col team-container rounded-2xl overflow-hidden"
+      >
+        <div
+          class="bg-green-950/30 p-2 text-center border-b border-green-900/50"
+        >
+          <span
+            class="text-[10px] font-bold tracking-widest text-green-500 uppercase"
+            >Secure Node: Alpha</span
+          >
+        </div>
+        <div class="flex-1 flex flex-col p-4 overflow-hidden">
           <div
             id="slotsA"
-            class="flex flex-wrap justify-center items-center gap-2 mb-12 min-h-[100px]"
-          >
-            <!-- Slots dynamic -->
-          </div>
-
-          <!-- Word Bank -->
+            class="flex flex-wrap justify-center items-center gap-1 mb-6 min-h-[140px] content-center"
+          ></div>
           <div
             id="bankA"
-            class="flex flex-wrap justify-center gap-4 mt-auto p-4 border-t border-dashed border-green-900"
-          >
-            <!-- Words dynamic -->
-          </div>
+            class="flex flex-wrap justify-center gap-3 mt-auto p-4 bg-black/40 rounded-xl border border-green-900/30 min-h-[120px]"
+          ></div>
         </div>
       </div>
 
-      <div class="divider"></div>
+      <div class="divider hidden md:block"></div>
 
-      <!-- Team B -->
-      <div class="flex-1 flex flex-col items-center px-10 space-y-12">
-        <div class="w-full team-container rounded-lg p-6 flex-1 flex flex-col">
-          <div class="text-center mb-8">
-            <span class="bg-green-900 text-green-300 px-3 py-1 text-xs rounded"
-              >SYSTEM MISSION: DECODE THE SENTENCE</span
-            >
-          </div>
-
-          <!-- Target Slots -->
+      <!-- Node B -->
+      <div
+        class="flex-1 flex flex-col team-container rounded-2xl overflow-hidden"
+      >
+        <div
+          class="bg-green-950/30 p-2 text-center border-b border-green-900/50"
+        >
+          <span
+            class="text-[10px] font-bold tracking-widest text-green-500 uppercase"
+            >Secure Node: Beta</span
+          >
+        </div>
+        <div class="flex-1 flex flex-col p-4 overflow-hidden">
           <div
             id="slotsB"
-            class="flex flex-wrap justify-center items-center gap-2 mb-12 min-h-[100px]"
-          >
-            <!-- Slots dynamic -->
-          </div>
-
-          <!-- Word Bank -->
+            class="flex flex-wrap justify-center items-center gap-1 mb-6 min-h-[140px] content-center"
+          ></div>
           <div
             id="bankB"
-            class="flex flex-wrap justify-center gap-4 mt-auto p-4 border-t border-dashed border-green-900"
-          >
-            <!-- Words dynamic -->
-          </div>
+            class="flex flex-wrap justify-center gap-3 mt-auto p-4 bg-black/40 rounded-xl border border-green-900/30 min-h-[120px]"
+          ></div>
         </div>
       </div>
     </div>
 
-    <!-- Winner Modal -->
+    <!-- Overlay Kemenangan -->
     <div
       id="winModal"
-      class="fixed inset-0 bg-black/90 hidden items-center justify-center z-[100]"
+      class="fixed inset-0 bg-black/98 hidden items-center justify-center z-[2000] backdrop-blur-md"
     >
-      <div class="text-center">
-        <h2 class="text-6xl font-bold mb-4 text-white">ACCESS GRANTED</h2>
+      <div
+        class="text-center border border-green-500 p-10 rounded-2xl bg-black shadow-[0_0_50px_rgba(0,255,65,0.2)]"
+      >
+        <h2 class="text-5xl font-bold mb-2 text-white tracking-tighter">
+          DATA SYNCED
+        </h2>
         <p
           id="winnerName"
-          class="text-2xl text-green-400 mb-8 tracking-widest"
+          class="text-xl text-green-400 mb-10 tracking-[0.4em] uppercase"
         ></p>
         <button
           onclick="location.reload()"
-          class="border-2 border-green-400 text-green-400 px-10 py-3 hover:bg-green-400 hover:text-black transition font-bold"
+          class="bg-green-500 text-black px-10 py-3 rounded-lg font-black hover:bg-white transition-all active:scale-95"
         >
-          REBOOT SYSTEM
+          SYSTEM REBOOT
         </button>
       </div>
     </div>
@@ -208,16 +233,15 @@
         "WE WILL VISIT BALI NEXT MONTH",
         "MY MOTHER COOKS DELICIOUS FOOD",
         "THE CAT IS SLEEPING ON THE SOFA",
-        "DO YOU LIKE EATING PIZZA",
-        "HE DID NOT FINISH HIS HOMEWORK",
+        "THE SUN RISES IN THE EAST",
+        "HE IS A VERY SMART STUDENT",
       ];
 
-      let currentRound = 0;
-      let totalRounds = 3;
-      let scoreA = 0;
-      let scoreB = 0;
+      let winsA = 0;
+      let winsB = 0;
       let gameActive = false;
       let time = 0;
+      let currentSentences = { A: [], B: [] };
 
       function shuffle(array) {
         return array.sort(() => Math.random() - 0.5);
@@ -227,6 +251,7 @@
         const sentence =
           sentencePool[Math.floor(Math.random() * sentencePool.length)];
         const words = sentence.split(" ");
+        currentSentences[team] = words;
         const shuffledWords = shuffle([...words]);
 
         const bank = document.getElementById(`bank${team}`);
@@ -235,102 +260,172 @@
         bank.innerHTML = "";
         slots.innerHTML = "";
 
-        // Create Slots
         words.forEach((_, i) => {
           const slot = document.createElement("div");
           slot.className = "slot";
           slot.dataset.index = i;
+          slot.dataset.team = team;
           slots.appendChild(slot);
         });
 
-        // Create Word Chips
-        shuffledWords.forEach((word) => {
+        shuffledWords.forEach((word, idx) => {
           const chip = document.createElement("div");
-          chip.className = "word-chip px-4 py-2 rounded text-lg font-bold";
+          chip.className = "word-chip px-4 py-2 rounded-lg text-lg font-bold";
           chip.innerText = word;
-          chip.draggable = true;
+          chip.dataset.team = team;
+          chip.id = `chip-${team}-${idx}-${Date.now()}`;
 
-          // Mouse Events
-          chip.ondragstart = (e) => {
-            e.dataTransfer.setData("text", word);
-            chip.classList.add("opacity-30");
-          };
-          chip.ondragend = () => chip.classList.remove("opacity-30");
-
-          // Touch Events for IFP
-          chip.addEventListener("touchstart", handleTouchStart, {
-            passive: false,
-          });
-          chip.addEventListener("touchmove", handleTouchMove, {
-            passive: false,
-          });
-          chip.addEventListener("touchend", handleTouchEnd, { passive: false });
+          // MENGGUNAKAN POINTER EVENTS UNTUK HYBRID SUPPORT
+          chip.addEventListener("pointerdown", onPointerDown);
 
           bank.appendChild(chip);
         });
 
-        // Allow drop on slots
-        slots.querySelectorAll(".slot").forEach((slot) => {
-          slot.ondragover = (e) => e.preventDefault();
-          slot.ondrop = (e) => {
-            const word = e.dataTransfer.getData("text");
-            checkWord(team, word, slot, words);
-          };
-        });
+        updateProgress(team);
       }
 
-      function checkWord(team, word, slot, originalArray) {
-        const index = parseInt(slot.dataset.index);
-        if (originalArray[index] === word && !slot.hasChildNodes()) {
-          const chip = document.createElement("div");
-          chip.className = "text-white text-xl font-bold animate-pulse";
-          chip.innerText = word;
-          slot.appendChild(chip);
-          slot.style.borderBottomColor = "#fff";
+      let activeCard = null;
+      let offset = { x: 0, y: 0 };
+      let originalParent = null;
 
-          // Remove from bank
-          const bank = document.getElementById(`bank${team}`);
-          Array.from(bank.children).forEach((c) => {
-            if (c.innerText === word) c.remove();
-          });
+      function onPointerDown(e) {
+        if (!gameActive) return;
 
-          checkSentenceComplete(team, originalArray.length);
-        } else {
-          // Shake effect for wrong slot
-          slot.style.borderColor = "red";
-          setTimeout(() => (slot.style.borderColor = "#333"), 500);
+        activeCard = e.currentTarget;
+
+        // Lock pointer ke elemen (Penting untuk Touch IFP)
+        activeCard.setPointerCapture(e.pointerId);
+
+        const rect = activeCard.getBoundingClientRect();
+        offset.x = e.clientX - rect.left;
+        offset.y = e.clientY - rect.top;
+
+        originalParent = activeCard.parentNode;
+
+        // Set style dragging
+        activeCard.classList.add("dragging");
+        activeCard.style.width = rect.width + "px";
+        activeCard.style.position = "fixed";
+        activeCard.style.left = e.clientX - offset.x + "px";
+        activeCard.style.top = e.clientY - offset.y + "px";
+        activeCard.style.zIndex = "1000";
+        activeCard.style.pointerEvents = "none"; // Izinkan detect element di bawahnya
+
+        activeCard.addEventListener("pointermove", onPointerMove);
+        activeCard.addEventListener("pointerup", onPointerUp);
+        activeCard.addEventListener("pointercancel", onPointerUp);
+      }
+
+      function onPointerMove(e) {
+        if (!activeCard) return;
+
+        activeCard.style.left = e.clientX - offset.x + "px";
+        activeCard.style.top = e.clientY - offset.y + "px";
+
+        // Visual feedback untuk drop target
+        const target = document.elementFromPoint(e.clientX, e.clientY);
+        document
+          .querySelectorAll(".slot")
+          .forEach((s) => s.classList.remove("active-target"));
+
+        const slot = target?.closest(".slot");
+        if (slot && slot.dataset.team === activeCard.dataset.team) {
+          if (!slot.hasChildNodes()) {
+            slot.classList.add("active-target");
+          }
         }
       }
 
-      function checkSentenceComplete(team, length) {
+      function onPointerUp(e) {
+        if (!activeCard) return;
+
+        activeCard.releasePointerCapture(e.pointerId);
+        const team = activeCard.dataset.team;
+
+        // Cari elemen di bawah kursor
+        const target = document.elementFromPoint(e.clientX, e.clientY);
+        const slot = target?.closest(".slot");
+
+        document
+          .querySelectorAll(".slot")
+          .forEach((s) => s.classList.remove("active-target"));
+
+        let success = false;
+
+        if (slot && slot.dataset.team === team && !slot.hasChildNodes()) {
+          const idx = parseInt(slot.dataset.index);
+          const word = activeCard.innerText;
+          const correctWord = currentSentences[team][idx];
+
+          if (word === correctWord) {
+            // Penempatan Benar
+            const lockedWord = document.createElement("div");
+            lockedWord.className =
+              "text-white text-xl font-bold win-animation uppercase";
+            lockedWord.innerText = word;
+            slot.appendChild(lockedWord);
+            slot.style.borderBottomColor = "#00ff41";
+            activeCard.remove();
+            success = true;
+            checkSentenceComplete(team);
+          }
+        }
+
+        if (!success) {
+          // Kembalikan ke posisi semula
+          activeCard.classList.remove("dragging");
+          activeCard.style.position = "static";
+          activeCard.style.width = "auto";
+          activeCard.style.zIndex = "10";
+          activeCard.style.pointerEvents = "auto";
+          originalParent.appendChild(activeCard);
+        }
+
+        activeCard.removeEventListener("pointermove", onPointerMove);
+        activeCard.removeEventListener("pointerup", onPointerUp);
+        activeCard.removeEventListener("pointercancel", onPointerUp);
+        activeCard = null;
+      }
+
+      function updateProgress(team) {
         const slots = document.getElementById(`slots${team}`);
-        const correctCount = slots.querySelectorAll(".text-white").length;
-
-        let progress = Math.round((correctCount / length) * 100);
+        const filled = slots.querySelectorAll(".text-white").length;
+        const total = currentSentences[team].length;
+        const progress = total > 0 ? Math.round((filled / total) * 100) : 0;
         document.getElementById(`score${team}`).innerText =
-          `PROGRESS: ${progress}%`;
+          `PROG: ${progress}%`;
+      }
 
-        if (correctCount === length) {
-          if (team === "A") scoreA++;
-          else scoreB++;
+      function checkSentenceComplete(team) {
+        updateProgress(team);
+        const slots = document.getElementById(`slots${team}`);
+        const filled = slots.querySelectorAll(".text-white").length;
 
-          if (scoreA + scoreB >= totalRounds) {
-            endGame();
+        if (filled === currentSentences[team].length && filled > 0) {
+          if (team === "A") winsA++;
+          else winsB++;
+
+          // Animasi Berhasil
+          const container = slots.parentElement;
+          container.classList.add("ring-2", "ring-green-400");
+
+          if (winsA >= 3 || winsB >= 3) {
+            setTimeout(
+              () => endGame(team === "A" ? "Node Alpha" : "Node Beta"),
+              500,
+            );
           } else {
-            // Next Level effect
-            const container = slots.parentElement;
-            container.classList.add("bg-green-500/20");
             setTimeout(() => {
-              container.classList.remove("bg-green-500/20");
+              container.classList.remove("ring-2", "ring-green-400");
               loadLevel(team);
-            }, 1000);
+            }, 800);
           }
         }
       }
 
       function startGame() {
         gameActive = true;
-        document.getElementById("startBtn").style.display = "none";
+        document.getElementById("startBtn").classList.add("hidden");
         loadLevel("A");
         loadLevel("B");
 
@@ -345,55 +440,16 @@
         }, 1000);
       }
 
-      function endGame() {
+      function endGame(winner) {
         gameActive = false;
-        document.getElementById("winModal").classList.remove("hidden");
-        document.getElementById("winModal").classList.add("flex");
-        document.getElementById("winnerName").innerText =
-          scoreA > scoreB ? "ALPHA NODE DOMINANT" : "BETA NODE DOMINANT";
+        const modal = document.getElementById("winModal");
+        modal.classList.remove("hidden");
+        modal.classList.add("flex");
+        document.getElementById("winnerName").innerText = `${winner} DOMINATED`;
       }
 
-      // Touch Support Logic
-      let activeChip = null;
-      function handleTouchStart(e) {
-        if (!gameActive) return;
-        activeChip = e.currentTarget;
-        activeChip.style.position = "fixed";
-        activeChip.style.zIndex = "1000";
-      }
-      function handleTouchMove(e) {
-        if (!activeChip) return;
-        e.preventDefault();
-        const touch = e.touches[0];
-        activeChip.style.left =
-          touch.clientX - activeChip.offsetWidth / 2 + "px";
-        activeChip.style.top =
-          touch.clientY - activeChip.offsetHeight / 2 + "px";
-      }
-      function handleTouchEnd(e) {
-        if (!activeChip) return;
-        const touch = e.changedTouches[0];
-        const target = document.elementFromPoint(touch.clientX, touch.clientY);
-        const slot = target?.closest(".slot");
-        const team = activeChip.parentElement.id.slice(-1);
-
-        // Get original sentence words (re-extracted for logic)
-        // A bit simplified for touch: we verify based on slot index
-        // But to keep it simple, we reuse the drag logic indirectly
-        if (slot) {
-          // Logic check usually requires sentence context,
-          // in this simple version, touch end triggers a click-like verify
-          const word = activeChip.innerText;
-          // Re-triggering word check for the correct team's current sentence
-          // We'll need to store current sentences globally for this robustly
-          // For now, simple reset if not dropped correctly
-        }
-
-        activeChip.style.position = "static";
-        activeChip = null;
-        // Note: Robust touch-to-drop needs a global sentence tracker per team
-        // Refreshing the level for this specific game logic
-      }
+      // Mencegah menu konteks klik kanan (khususnya di IFP agar tidak muncul menu browser)
+      window.oncontextmenu = (e) => e.preventDefault();
     </script>
   </body>
 </html>
