@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
     />
-    <title>Sentence Scramble Race - Pro Edition</title>
+    <title>Sentence Scramble Race - Extended Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap"
@@ -41,7 +41,6 @@
         z-index: -1;
       }
 
-      /* Container Slot agar kata tidak tumpang tindih */
       .slot-area {
         display: flex;
         flex-wrap: wrap;
@@ -69,7 +68,6 @@
         background: rgba(0, 255, 65, 0.05);
       }
 
-      /* Styling Kata */
       .word-chip {
         background: #1a1a1a;
         border: 2px solid var(--primary);
@@ -95,7 +93,6 @@
         box-shadow: 0 10px 20px rgba(0, 255, 65, 0.3);
       }
 
-      /* Tombol Check Modern */
       .btn-check {
         background: var(--primary);
         color: black;
@@ -136,7 +133,6 @@
         }
       }
 
-      /* Responsive adjustments for Tablet/IFP */
       @media (max-width: 768px) {
         .slot-area {
           min-height: 180px;
@@ -151,7 +147,6 @@
   <body>
     <div class="matrix-grid"></div>
 
-    <!-- Header & Stats -->
     <header
       class="fixed top-0 w-full p-4 flex justify-between items-center z-50"
     >
@@ -180,7 +175,6 @@
       </div>
     </header>
 
-    <!-- Arena Game -->
     <main class="flex h-full pt-32 pb-8 px-4 gap-4">
       <!-- Player A Side -->
       <section
@@ -233,7 +227,6 @@
       </section>
     </main>
 
-    <!-- Win Modal -->
     <div
       id="modal"
       class="fixed inset-0 bg-black/95 hidden items-center justify-center z-[10000]"
@@ -253,13 +246,38 @@
     </div>
 
     <script>
-      const sentences = [
+      // Database kalimat yang diperluas
+      const sentencePool = [
         "I GO TO SCHOOL EVERY DAY",
         "THEY ARE PLAYING FOOTBALL NOW",
         "MY FATHER IS A DOCTOR",
         "SHE COOKS RICE IN THE KITCHEN",
         "WE WATCH MOVIE ON SUNDAY",
         "THE CAT IS SLEEPING UNDER TABLE",
+        "HE DRINKS MILK EVERY MORNING",
+        "BIRDS FLY IN THE BLUE SKY",
+        "WE LOVE TO EAT PIZZA",
+        "STUDENTS STUDY HARD FOR EXAM",
+        "THE SUN RISES IN THE EAST",
+        "I HAVE TWO BROTHERS AND SISTERS",
+        "THEY VISIT THEIR GRANDMA ON WEEKEND",
+        "WATER BOILS AT ONE HUNDRED DEGREES",
+        "SHE WRITES A LETTER FOR FRIEND",
+        "WE PLAY HIDE AND SEEK TOGETHER",
+        "THE FLOWERS ARE BLOOMING IN GARDEN",
+        "HE RIDES HIS BICYCLE TO PARK",
+        "MY MOTHER BAKES A CHOCOLATE CAKE",
+        "THE DOG BARKS AT THE STRANGER",
+        "THEY LISTEN TO MUSIC EVERY NIGHT",
+        "I BRUSH MY TEETH BEFORE SLEEP",
+        "WE GO SWIMMING IN THE POOL",
+        "THE RAIN FALLS FROM THE CLOUDS",
+        "SHE READS A STORY BOOK ALOUD",
+        "THE TEACHER EXPLAINS THE LESSON CLEARLY",
+        "MY BROTHER REPAIRS THE BROKEN TOY",
+        "WE HELP OUR PARENTS AT HOME",
+        "THE FARMER PLANTS RICE IN FIELD",
+        "THE CHILDREN LAUGH IN THE PLAYGROUND",
       ];
 
       let state = {
@@ -269,7 +287,6 @@
         time: 0,
       };
 
-      // Pointer State
       let dragItem = null;
       let startX, startY;
       let originalParent = null;
@@ -292,7 +309,9 @@
       }
 
       function nextLevel(team) {
-        const raw = sentences[Math.floor(Math.random() * sentences.length)];
+        // Mengambil kalimat acak dari pool yang besar
+        const raw =
+          sentencePool[Math.floor(Math.random() * sentencePool.length)];
         const words = raw.split(" ");
         state[team].original = raw;
         state[team].current = words;
@@ -305,7 +324,6 @@
         sourceArea.innerHTML = "";
         checkBtn.disabled = true;
 
-        // Buat slot target
         words.forEach(() => {
           const slot = document.createElement("div");
           slot.className = "word-slot";
@@ -313,7 +331,6 @@
           targetArea.appendChild(slot);
         });
 
-        // Buat kata di bank (source)
         const shuffled = [...words].sort(() => Math.random() - 0.5);
         shuffled.forEach((w) => {
           const slot = document.createElement("div");
@@ -359,7 +376,6 @@
         dragItem.style.left = e.clientX - startX + "px";
         dragItem.style.top = e.clientY - startY + "px";
 
-        // Visual feedback target
         const target = document.elementFromPoint(e.clientX, e.clientY);
         const slot = target?.closest(".word-slot");
 
@@ -388,12 +404,10 @@
           originalParent.appendChild(dragItem);
         }
 
-        // Cleanup style
         dragItem.classList.remove("dragging");
         dragItem.style.position = "static";
         dragItem.style.width = "auto";
 
-        // Toggle check button
         const targetArea = document.getElementById(`target${team}`);
         const chipsInTarget = targetArea.querySelectorAll(".word-chip").length;
         document.getElementById(`check${team}`).disabled =
@@ -444,7 +458,6 @@
         winnerText.innerText = `${winner} HAS SECURED THE DATABASE`;
       }
 
-      // Disable right click for IFP/Touch stability
       window.addEventListener("contextmenu", (e) => e.preventDefault());
     </script>
   </body>
